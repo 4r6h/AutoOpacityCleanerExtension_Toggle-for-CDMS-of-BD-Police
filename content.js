@@ -24,11 +24,38 @@ function cleanCDPage() {
     });
   });
 
-  // Hide buttons with "Confirm CD"
+  // Hide buttons with "Confirm CD" and remove empty space
   document.querySelectorAll("button, input[type='button'], input[type='submit']").forEach(btn => {
-    if (btn.innerText.includes("Confirm CD") || btn.value === "Confirm CD") {
+    if (
+      (btn.innerText && btn.innerText.includes("Confirm CD")) ||
+      btn.value === "Confirm CD"
+    ) {
+      const parent = btn.parentElement;
+
+      // Hide button
       btn.style.display = "none";
       hiddenElements.push(btn);
+
+      // Remove parent spacing to avoid empty line
+      if (parent) {
+        parent.style.margin = "0";
+        parent.style.padding = "0";
+        parent.style.height = "0";
+        parent.style.display = "none";
+        hiddenElements.push(parent);
+      }
+    }
+  });
+
+  // Remove empty col-5 div containing only &nbsp;
+  document.querySelectorAll("div.col.col-5").forEach(div => {
+    const span = div.querySelector("span.apex-grid-nbsp");
+    if (
+      span &&
+      span.innerHTML.trim() === "&nbsp;" &&
+      div.innerText.trim() === ""
+    ) {
+      div.remove();
     }
   });
 
@@ -44,6 +71,9 @@ function restorePage() {
   // Show previously hidden elements
   hiddenElements.forEach(el => {
     el.style.display = "";
+    el.style.margin = "";
+    el.style.padding = "";
+    el.style.height = "";
   });
 
   hiddenElements = [];
