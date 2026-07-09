@@ -1,23 +1,31 @@
-
 let isCleaned = false;
 const textsToHide = [
   "CDMS স্বয়ংক্রিয় ভাবে তৈরী খসড়া রিপোর্ট (CD) , এখনো পরিবর্তন যোগ্য, CD চূড়ান্ত করে প্রিন্ট করুন।"
 ];
 let hiddenElements = [];
 let originalOpacity = [];
-let originalParentStyles = new Map(); // প্যারেন্টের আদি স্টাইল সেভ রাখার জন্য
+let originalParentStyles = new Map();
+
+// পেজ লোড হওয়ার সময় অ্যাকটিভ মোড চেক করা
+chrome.storage.local.get('activeMode', (result) => {
+  if (result.activeMode) {
+    cleanCDPage();
+  }
+});
 
 function cleanCDPage() {
+  // পুরনো ডাটা রিসেট
+  hiddenElements = [];
   originalOpacity = [];
-  originalParentStyles.clear(); 
+  originalParentStyles.clear();
 
-  // সব এলিমেন্টের অপাসিটি ফুল করা
+  // সব এলিমেন্টের অপাসিটি ১.০ করা
   document.querySelectorAll("*").forEach(el => {
     originalOpacity.push({ el, opacity: el.style.opacity });
     el.style.opacity = "1.0";
   });
 
-  // নির্দিষ্ট টেক্সট হাইড করা
+  // নির্দিষ্ট টেক্সট লুকানো
   document.querySelectorAll("body *").forEach(el => {
     textsToHide.forEach(text => {
       if (el.innerText && el.innerText.trim() === text) {
@@ -27,7 +35,7 @@ function cleanCDPage() {
     });
   });
 
-  // Confirm CD বাটন এবং তার প্যারেন্ট কন্টেইনার হ্যান্ডেল করা
+  // Confirm CD বাটন এবং প্যারেন্ট কন্টেইনার লুকানো
   document.querySelectorAll("button, input[type='button'], input[type='submit']").forEach(btn => {
     if (
       (btn.innerText && btn.innerText.includes("Confirm CD")) ||
@@ -38,7 +46,6 @@ function cleanCDPage() {
       hiddenElements.push(btn);
 
       if (parent) {
-        // রিস্টোর করার জন্য প্যারেন্টের বর্তমান স্টাইল সেভ করা হচ্ছে
         originalParentStyles.set(parent, {
           margin: parent.style.margin,
           padding: parent.style.padding,
@@ -46,7 +53,6 @@ function cleanCDPage() {
           display: parent.style.display
         });
 
-        // স্পেস রিমুভ করার জন্য স্টাইল পরিবর্তন
         parent.style.margin = "0";
         parent.style.padding = "0";
         parent.style.height = "0";
@@ -55,7 +61,7 @@ function cleanCDPage() {
     }
   });
 
-  // খালি স্পেস ডিভ হ্যান্ডেল করা
+  // খালি স্পেস ডিভ লুকানো
   document.querySelectorAll("div.col.col-5").forEach(div => {
     const span = div.querySelector("span.apex-grid-nbsp");
     if (
@@ -72,12 +78,12 @@ function cleanCDPage() {
 }
 
 function restorePage() {
-  // অপাসিটি আগের মতো করা
+  // অপাসিটি ফিরিয়ে আনা
   originalOpacity.forEach(({ el, opacity }) => {
     el.style.opacity = opacity;
   });
 
-  // প্যারেন্ট এলিমেন্টের স্টাইল হুবহু আগের মতো ফিরিয়ে আনা
+  // প্যারেন্ট স্টাইল ফিরিয়ে আনা
   originalParentStyles.forEach((styles, parent) => {
     parent.style.margin = styles.margin;
     parent.style.padding = styles.padding;
@@ -85,12 +91,12 @@ function restorePage() {
     parent.style.display = styles.display;
   });
 
-  // অন্যান্য লুকানো এলিমেন্ট দেখানো
+  // লুকানো এলিমেন্ট দেখানো
   hiddenElements.forEach(el => {
     el.style.display = ""; 
   });
 
-  // ডাটা রিসেট
+  // সব রিসেট
   hiddenElements = [];
   originalOpacity = [];
   originalParentStyles.clear();
@@ -100,6 +106,12 @@ function restorePage() {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "clean_cd_page") {
     if (!isCleaned) {
+      cleanCDPage();
+    } else {
+      restorePage();
+    }
+  } else if (request.action === "active_mode_toggle") {
+    if (request.activeMode) {
       cleanCDPage();
     } else {
       restorePage();
